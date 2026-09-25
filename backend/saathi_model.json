@@ -1,0 +1,64 @@
+{
+  "model_version": "saathi-v2.0-adaptive",
+  "feature_names": [
+    "duty_hours",
+    "night_fraction",
+    "sleep_score",
+    "shift_load_score",
+    "family_score",
+    "camaraderie_score",
+    "coping_resilience",
+    "duty_counter_naxal_lwe",
+    "duty_counter_insurgency_jk_ne",
+    "duty_law_order_vip_duty",
+    "duty_peace_training_static",
+    "duty_staff_hq"
+  ],
+  "feature_importances": {
+    "duty_hours": 0.0846377928093395,
+    "night_fraction": 0.12075713989155804,
+    "sleep_score": 0.3751621736883157,
+    "shift_load_score": 0.13039419191682108,
+    "family_score": 0.1630940907277687,
+    "camaraderie_score": 0.04934408439893864,
+    "coping_resilience": 0.07619041159314144,
+    "duty_counter_naxal_lwe": 0.0002487713731095863,
+    "duty_counter_insurgency_jk_ne": 3.305859138031513e-05,
+    "duty_law_order_vip_duty": 6.283557919548497e-05,
+    "duty_peace_training_static": 2.1452888305886745e-05,
+    "duty_staff_hq": 5.399654212559238e-05
+  },
+  "classes": [
+    "Elevated Strain",
+    "Mild Strain",
+    "Optimal"
+  ],
+  "duty_categories": [
+    "counter_naxal_lwe",
+    "counter_insurgency_jk_ne",
+    "law_order_vip_duty",
+    "peace_training_static",
+    "staff_hq"
+  ],
+  "metadata": {
+    "regressor_rmse": 0.0219,
+    "classifier_accuracy": 0.8275,
+    "training_samples": 6000,
+    "duty_contexts_supported": [
+      "Counter-Naxal / LWE Tactical Deployment",
+      "Counter-Insurgency & Tactical Patrol (J&K / NE)",
+      "Law & Order, Election & VIP/VVIP Security",
+      "Peace Station, Training & Group Centre Base",
+      "CRPF Directorate / Sector HQ Command Staff"
+    ]
+  },
+  "weights": {
+    "sleep_score": 0.28,
+    "shift_load_score": 0.22,
+    "family_score": 0.2,
+    "camaraderie_score": 0.15,
+    "coping_resilience": 0.15,
+    "duty_hours_penalty_threshold": 60.0,
+    "night_fraction_penalty_threshold": 0.35
+  }
+}

@@ -1,0 +1,184 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-[#FAFBFD] text-text-primary font-sans antialiased;
+    font-family: 'Noto Sans', 'Noto Sans Devanagari', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  h1, h2, h3, h4, .font-serif-header {
+    @apply font-sans font-bold text-navy-primary tracking-normal;
+  }
+
+  /* Flatten all card & button focus rings and transitions */
+  button, a {
+    transition: background-color 0.1s ease, color 0.1s ease, border-color 0.1s ease;
+  }
+}
+
+/* Institutional Badge and Chip styling - Sharp 2px radius */
+.badge-khaki {
+  @apply inline-flex items-center px-2 py-0.5 rounded-[2px] text-xs font-semibold bg-khaki/15 text-khaki-dark border border-khaki/30;
+}
+
+.badge-navy {
+  @apply inline-flex items-center px-2 py-0.5 rounded-[2px] text-xs font-semibold bg-navy-primary/10 text-navy-primary border border-navy-primary/20;
+}
+
+.badge-gold {
+  @apply inline-flex items-center px-2 py-0.5 rounded-[2px] text-xs font-semibold bg-gold/15 text-gold-dark border border-gold/40;
+}
+
+/* Institutional Icons - Crisp solid styling */
+.icon-circle {
+  @apply w-7 h-7 rounded-[3px] bg-navy-primary text-white flex items-center justify-center shrink-0;
+}
+
+.icon-circle-sm {
+  @apply w-5 h-5 rounded-[2px] bg-navy-primary text-white flex items-center justify-center shrink-0;
+}
+
+.icon-circle-gold {
+  @apply w-7 h-7 rounded-[3px] bg-gold text-navy-darker flex items-center justify-center shrink-0 font-bold;
+}
+
+.icon-circle-khaki {
+  @apply w-7 h-7 rounded-[3px] bg-khaki text-white flex items-center justify-center shrink-0;
+}
+
+/* Clean, flat institutional card styles - Single 1px border, 2-4px radius, no drop-shadow */
+.gov-card {
+  @apply bg-white border border-neutral-border rounded-[3px] shadow-none overflow-hidden;
+}
+
+.gov-card-header {
+  @apply bg-neutral-card px-4 py-3 border-b border-neutral-border flex items-center justify-between font-bold text-xs text-navy-primary;
+}
+
+/* Dense, functional Indian Government Data Tables with visible cell & row separators */
+.gov-table {
+  @apply w-full border-collapse border border-[#D0D5DD] text-xs;
+}
+
+.gov-table th {
+  @apply px-3 py-2 bg-[#F2F4F7] text-left text-xs font-bold text-navy-primary border border-[#D0D5DD] whitespace-nowrap;
+}
+
+.gov-table td {
+  @apply px-3 py-2 border border-[#E2E6EC] text-xs text-text-primary align-middle;
+}
+
+.gov-table tbody tr:nth-child(even) td {
+  @apply bg-[#FAFBFC];
+}
+
+.gov-table tbody tr:hover td {
+  @apply bg-[#EEF2F6];
+}
+
+/* GIGW Standard Accessibility: Text Size Modes */
+html.text-size-large {
+  font-size: 18px;
+}
+
+html.text-size-small {
+  font-size: 14px;
+}
+
+/* GIGW Standard Accessibility: High Contrast Mode */
+html.high-contrast {
+  filter: contrast(120%);
+}
+
+html.high-contrast body,
+html.high-contrast #root {
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
+}
+
+html.high-contrast header {
+  background-color: #000000 !important;
+  border-bottom: 2px solid #FFFF00 !important;
+}
+
+html.high-contrast .gov-card,
+html.high-contrast .gov-card-header,
+html.high-contrast nav,
+html.high-contrast div[class*="bg-white"],
+html.high-contrast div[class*="bg-neutral-card"],
+html.high-contrast div[class*="bg-slate-"],
+html.high-contrast div[class*="bg-emerald-"],
+html.high-contrast div[class*="bg-amber-"] {
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
+  border-color: #FFFF00 !important;
+  box-shadow: none !important;
+}
+
+html.high-contrast h1,
+html.high-contrast h2,
+html.high-contrast h3,
+html.high-contrast h4,
+html.high-contrast strong,
+html.high-contrast .text-navy-primary {
+  color: #FFFF00 !important;
+}
+
+html.high-contrast .text-text-muted,
+html.high-contrast .text-slate-400,
+html.high-contrast .text-slate-300,
+html.high-contrast .text-slate-500 {
+  color: #DDDDDD !important;
+}
+
+html.high-contrast a {
+  color: #FFFF00 !important;
+  text-decoration: underline !important;
+}
+
+html.high-contrast button {
+  background-color: #111111 !important;
+  color: #FFFF00 !important;
+  border-color: #FFFF00 !important;
+  box-shadow: none !important;
+}
+
+html.high-contrast button:hover {
+  background-color: #FFFF00 !important;
+  color: #000000 !important;
+}
+
+html.high-contrast input,
+html.high-contrast select,
+html.high-contrast textarea {
+  background-color: #111111 !important;
+  color: #FFFF00 !important;
+  border-color: #FFFF00 !important;
+}
+
+html.high-contrast .gov-table,
+html.high-contrast .gov-table th,
+html.high-contrast .gov-table td {
+  border-color: #FFFF00 !important;
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
+}
+
+html.high-contrast .gov-table th {
+  background-color: #1a1a1a !important;
+  color: #FFFF00 !important;
+}
+
+html.high-contrast .gov-table tbody tr:hover td {
+  background-color: #222222 !important;
+}
+
+html.high-contrast .badge-khaki,
+html.high-contrast .badge-navy,
+html.high-contrast .badge-gold {
+  background-color: #111111 !important;
+  color: #FFFF00 !important;
+  border-color: #FFFF00 !important;
+}
