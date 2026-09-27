@@ -210,7 +210,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               </span>
             </div>
             <p className="text-xs text-slate-300 font-sans tracking-normal mt-0.5">
-              CRPF Personnel Welfare Monitoring System (SIH26186)
+              Multimodal Predictive Intelligence for Personnel Wellness
             </p>
           </div>
         </div>

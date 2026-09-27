@@ -127,7 +127,7 @@ export function App() {
                   SETU (सेतु) Access Portal
                 </h2>
                 <p className="text-xs text-text-muted mt-1 font-sans">
-                  SIH26186 — CAPF Personnel Welfare Monitoring System • गार्जियन माइंड्स (Guardian Minds)
+                  SIH26186 — Multimodal Predictive Intelligence for Personnel Wellness • गार्जियन माइंड्स (Guardian Minds)
                 </p>
               </div>
 

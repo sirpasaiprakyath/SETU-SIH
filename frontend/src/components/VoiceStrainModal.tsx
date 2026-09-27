@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   AlertTriangle,
   RotateCcw,
-  FileText,
   Activity,
   Volume2,
   ChevronRight,
@@ -25,12 +24,14 @@ import {
 } from "../utils/acousticEngine";
 import { apiSubmitVocalCheckin, type VocalCheckinResponse } from "../api";
 import { formatRealDateTime, getRealNowIso } from "../utils/dateUtils";
+import type { User } from "../types";
 
 interface VoiceStrainModalProps {
   isOpen: boolean;
   onClose: () => void;
   onOpenVishram?: () => void;
   onSuccessCheckin?: (res: VocalCheckinResponse) => void;
+  currentUser?: User;
 }
 
 // dBFS from RMS
@@ -51,7 +52,8 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
   isOpen,
   onClose,
   onOpenVishram,
-  onSuccessCheckin
+  onSuccessCheckin,
+  currentUser
 }) => {
   const { tr } = useLanguage();
 
@@ -69,13 +71,24 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
   const [submitResult, setSubmitResult] = useState<VocalCheckinResponse | null>(null);
 
   // Cooldown & Tactical Field Outpost Offline Storage Keys
-  const COOLDOWN_MS = 6 * 60 * 60 * 1000;
+  // TASK 3: Cooldown changed to 24 hours (Daily Roll-Call muster cadence)
+  const COOLDOWN_MS = 24 * 60 * 60 * 1000;
   const COOLDOWN_KEY = "dhvani_last_submit_ts";
   const OFFLINE_QUEUE_KEY = "dhvani_offline_queue";
   const LOCAL_HISTORY_KEY = "dhvani_local_history";
   const PERSONAL_BASELINE_KEY = "dhvani_personal_baseline";
   const [cooldownRemaining, setCooldownRemaining] = useState<string | null>(null);
   const cooldownTimerRef = useRef<number | null>(null);
+
+  // TASK 2: One-time enrollment consent helpers (tied to user account)
+  const getConsentKey = useCallback(() => {
+    return currentUser?.username ? `dhvani_consent_${currentUser.username}` : "dhvani_consent_accepted";
+  }, [currentUser]);
+
+  const hasGivenConsent = useCallback(() => {
+    const key = getConsentKey();
+    return localStorage.getItem(key) === "true" || localStorage.getItem("dhvani_consent_accepted") === "true";
+  }, [getConsentKey]);
 
   // Tactical background synchronization for queued field outpost records
   const drainOfflineQueue = useCallback(async () => {
@@ -180,7 +193,13 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
   // ── Check permissions on open ────────────────────────────────────────────
   useEffect(() => {
     if (isOpen) {
-      setPage("idle");
+      // TASK 2: If a person has NOT yet given enrollment consent, show consent first
+      const consented = hasGivenConsent();
+      if (!consented) {
+        setPage("consent");
+      } else {
+        setPage("idle");
+      }
       setBiomarkers(null);
       setSubmitResult(null);
       setQualityNotice(null);
@@ -219,7 +238,7 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
       checkPermissions();
       drainOfflineQueue();
 
-      // Task 4: enumerate input devices so user can pick the right mic
+      // Enumerate input devices so user can pick the right mic
       const loadDevices = async () => {
         try {
           const devices = await navigator.mediaDevices.enumerateDevices();
@@ -233,7 +252,7 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
       stopAudioCapture();
       if (cooldownTimerRef.current) { clearInterval(cooldownTimerRef.current); cooldownTimerRef.current = null; }
     }
-  }, [isOpen, drainOfflineQueue]);
+  }, [isOpen, drainOfflineQueue, hasGivenConsent]);
 
   useEffect(() => {
     const handleOnline = () => {
@@ -501,16 +520,6 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
     render();
   };
 
-  // ── First-time plain-language consent gate (DPDP Act 2023 Compliance) ──
-  const handleInitiateVoiceCheck = () => {
-    const hasConsented = localStorage.getItem("dhvani_consent_granted");
-    if (!hasConsented) {
-      setPage("consent");
-      return;
-    }
-    startVoiceCheck();
-  };
-
   // ── Start actual 10s recording (called from preflight "Looks good" button) ──
   const startVoiceCheck = async () => {
     stopPreflight();
@@ -519,6 +528,8 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
     setSpeechDetected(false);
     setLiveDb(-70);
     setQualityNotice(null);
+    setBiomarkers(null);
+    setSubmitResult(null);
     voicedFramesRef.current = 0;
     consecutiveSilentRef.current = 0;
     isRecordingRef.current = false;
@@ -850,19 +861,52 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
       console.log(`[Dhvani] Final: score=${score}% tier="${tier}" jitter=${jitter}% shimmer=${shimmer}% hnr=${hnr}dB avgPitch=${avgPitch}Hz`);
 
       zeroWipeBuffer(buffer);
-      setBiomarkers({
+
+      // TASK 1: When confidence is Low (Retake Advised), do NOT render score, tier, or "review advised" language.
+      // Do NOT save to history, API, or personal baseline. Re-use existing failed_quality pattern.
+      if (confidence_level === "Low (Retake Advised)") {
+        console.warn(`[Dhvani] Quality gate rejected: Low confidence (SNR=${snrDb}dB, Voiced=${voicedDurationSec}s). Suppressing score & requiring retake.`);
+        const lowSnr = snrDb < 9.0;
+        const lowDuration = voicedDurationSec < 1.8;
+        let reasonEn = "";
+        let reasonHi = "";
+        if (lowSnr && lowDuration) {
+          reasonEn = `Low signal-to-noise ratio (${snrDb} dB SNR, min 9 dB) and short speech duration (${voicedDurationSec}s voiced, min 1.8s).`;
+          reasonHi = `आसपास का शोर अधिक था (${snrDb} dB SNR, न्यूनतम 9 dB) एवं आवाज़ की अवधि कम थी (${voicedDurationSec}s, न्यूनतम 1.8s)।`;
+        } else if (lowSnr) {
+          reasonEn = `Low signal-to-noise ratio (${snrDb} dB SNR, minimum required 9 dB). High ambient background noise detected.`;
+          reasonHi = `ध्वनि अनुपात अपर्याप्त (${snrDb} dB SNR, न्यूनतम 9 dB)। अत्यधिक वातावरणीय शोर दर्ज।`;
+        } else {
+          reasonEn = `Voiced speech duration was too short (${voicedDurationSec}s voiced, minimum required 1.8s).`;
+          reasonHi = `आवाज़ की अवधि अपर्याप्त थी (${voicedDurationSec}s, न्यूनतम आवश्यक 1.8s)।`;
+        }
+        setQualityNotice({
+          en: `${reasonEn} The recording did not meet quality requirements. Please retry in a quieter spot and speak the roll-call phrase for the full 10 seconds.`,
+          hi: `${reasonHi} यह रिकॉर्डिंग गुणवत्ता आवश्यकताओं के अनुरूप नहीं थी। कृपया शांत स्थान पर पुनः प्रयास करें और पूरे 10 सेकंड तक वाक्य बोलें।`
+        });
+        setBiomarkers(null);
+        setPage("failed_quality");
+        return;
+      }
+
+      // Valid check-in: confidence is Moderate or High
+      const finalBiomarkers: AcousticBiomarkers = {
         pitch_hz: avgPitch, pitch_std_hz: pitchStd, pitch_min_hz: minPitch, pitch_max_hz: maxPitch,
         total_frames_analyzed: voicedFramesRef.current,
         jitter_pct: jitter, shimmer_pct: shimmer, hnr_db: hnr,
         strain_score: score, strain_tier: tier, confidence_level, confidence_score,
         primary_driver, voiced_duration_sec: voicedDurationSec, snr_db: snrDb
-      });
+      };
+      setBiomarkers(finalBiomarkers);
       setPage("completed");
+
+      // TASK 2: Auto-save immediately for enrolled personnel!
+      autoSaveRecord(finalBiomarkers);
     }, 600);
   };
 
-  const handleSaveToRecord = async () => {
-    if (!biomarkers) return;
+  // TASK 2: Auto-save after one-time enrollment consent (no manual click-gate)
+  const autoSaveRecord = async (bm: AcousticBiomarkers) => {
     const lastSubmit = localStorage.getItem(COOLDOWN_KEY);
     if (lastSubmit && Date.now() - parseInt(lastSubmit, 10) < COOLDOWN_MS) {
       checkCooldown();
@@ -881,17 +925,17 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
     const past14d = Array.isArray(localHistory) ? localHistory.filter((r) => r.timestamp >= cutoff14d) : [];
     const avgPriorStrain = past14d.length > 0
       ? past14d.reduce((acc, curr) => acc + (curr.strain_score || 0), 0) / past14d.length
-      : biomarkers.strain_score;
-    const localDrift = Math.round((biomarkers.strain_score - avgPriorStrain) * 10) / 10;
+      : bm.strain_score;
+    const localDrift = Math.round((bm.strain_score - avgPriorStrain) * 10) / 10;
 
     const nowIso = getRealNowIso();
     const payload = {
-      strain_score: biomarkers.strain_score,
-      strain_tier: biomarkers.strain_tier,
-      jitter_pct: biomarkers.jitter_pct,
-      shimmer_pct: biomarkers.shimmer_pct,
-      hnr_db: biomarkers.hnr_db,
-      pitch_hz: biomarkers.pitch_hz,
+      strain_score: bm.strain_score,
+      strain_tier: bm.strain_tier,
+      jitter_pct: bm.jitter_pct,
+      shimmer_pct: bm.shimmer_pct,
+      hnr_db: bm.hnr_db,
+      pitch_hz: bm.pitch_hz,
       duration_sec: 10.0,
       session_mode: "live_mic",
       recorded_at: nowIso
@@ -911,17 +955,17 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
         status: "offline_cached",
         record_id: Date.now(),
         created_at: nowIso,
-        strain_score: biomarkers.strain_score,
-        strain_tier: biomarkers.strain_tier,
-        jitter_pct: biomarkers.jitter_pct,
-        shimmer_pct: biomarkers.shimmer_pct,
-        hnr_db: biomarkers.hnr_db,
-        pitch_hz: biomarkers.pitch_hz,
+        strain_score: bm.strain_score,
+        strain_tier: bm.strain_tier,
+        jitter_pct: bm.jitter_pct,
+        shimmer_pct: bm.shimmer_pct,
+        hnr_db: bm.hnr_db,
+        pitch_hz: bm.pitch_hz,
         strain_drift_vs_baseline: localDrift,
         prior_14d_checks_count: past14d.length,
-        recommendation: biomarkers.strain_score >= 55.0
+        recommendation: bm.strain_score >= 55.0
           ? "Marked acoustic vocal perturbation detected. Recommend medical officer welfare review and Vishram rest pacing."
-          : biomarkers.strain_score >= 33.0
+          : bm.strain_score >= 33.0
           ? "Moderate vocal cord perturbation observed. Recommend routine monitoring, hydration, and regular sleep continuity."
           : "Acoustic parameters within resting physiological baseline. Non-diagnostic auxiliary screening.",
         privacy_guarantee: "Zero audio recorded or stored. Secure DPDP on-device encryption active."
@@ -944,23 +988,23 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
         id: res.record_id || Date.now(),
         timestamp: Date.now(),
         created_at: res.created_at || nowIso,
-        strain_score: biomarkers.strain_score,
-        strain_tier: biomarkers.strain_tier,
-        jitter_pct: biomarkers.jitter_pct,
-        shimmer_pct: biomarkers.shimmer_pct,
-        hnr_db: biomarkers.hnr_db,
-        pitch_hz: biomarkers.pitch_hz,
+        strain_score: bm.strain_score,
+        strain_tier: bm.strain_tier,
+        jitter_pct: bm.jitter_pct,
+        shimmer_pct: bm.shimmer_pct,
+        hnr_db: bm.hnr_db,
+        pitch_hz: bm.pitch_hz,
         synced: !isOfflineCached
       };
       const updatedHist = [newEntry, ...localHistory].slice(0, 30);
       localStorage.setItem(LOCAL_HISTORY_KEY, JSON.stringify(updatedHist));
       localStorage.setItem(PERSONAL_BASELINE_KEY, JSON.stringify({
-        lastStrain: biomarkers.strain_score,
-        lastTier: biomarkers.strain_tier,
-        lastJitter: biomarkers.jitter_pct,
-        lastShimmer: biomarkers.shimmer_pct,
-        lastHnr: biomarkers.hnr_db,
-        lastPitch: biomarkers.pitch_hz,
+        lastStrain: bm.strain_score,
+        lastTier: bm.strain_tier,
+        lastJitter: bm.jitter_pct,
+        lastShimmer: bm.shimmer_pct,
+        lastHnr: bm.hnr_db,
+        lastPitch: bm.pitch_hz,
         lastRecordedAt: res.created_at || nowIso,
         synced: !isOfflineCached,
         updatedAt: Date.now()
@@ -1065,6 +1109,32 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
           ══════════════════════════════════════════════════════════════ */}
           {page === "idle" && (
             <div className="space-y-4">
+              {/* Daily Cadence Cooldown Banner (TASK 3: 24h daily roll-call cadence) */}
+              {cooldownRemaining && (
+                <div className="p-3.5 bg-amber-50/90 border border-amber-300 rounded-lg text-xs text-amber-950 flex items-center justify-between shadow-2xs">
+                  <div className="flex items-center space-x-2.5">
+                    <span className="text-base">🔒</span>
+                    <div>
+                      <span className="font-bold block">{tr("Daily Roll-Call Check Complete", "आज का दैनिक रोल-कॉल चेक-इन पूर्ण")}</span>
+                      <span className="text-[11px] text-amber-800">
+                        {tr(`Next check-in window opens in ${cooldownRemaining} (24-hour daily roll-call cadence).`, `अगली जांच विंडो ${cooldownRemaining} में खुलेगी (24-घंटे दैनिक चक्र)।`)}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      localStorage.removeItem(COOLDOWN_KEY);
+                      setCooldownRemaining(null);
+                    }}
+                    className="text-[10px] font-bold text-navy-primary hover:underline cursor-pointer bg-amber-200/90 hover:bg-amber-300 px-2.5 py-1 rounded shrink-0 shadow-2xs"
+                    title="Reset cooldown for demonstration / evaluation"
+                  >
+                    {tr("Reset Demo", "डेमो रीसेट")}
+                  </button>
+                </div>
+              )}
+
               {/* Permission status badge */}
               <div className={`p-3 rounded-lg border flex items-start space-x-2.5 text-xs ${
                 micPermission === "granted" ? "bg-emerald-50 border-emerald-200 text-emerald-900"
@@ -1097,7 +1167,7 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
                 </div>
                 <div>
                   <h4 className="font-bold text-sm text-navy-primary">{tr("Daily Roll-Call & Voice Check Phrase", "दैनिक रोल-कॉल व स्वर परीक्षण वाक्य")}</h4>
-                  <p className="text-xs text-slate-500 mt-1">{tr("You will first check your microphone, then speak this phrase for 10 seconds:", "पहले माइक्रोफ़ोन जांच होगी, फिर यह वाक्य 10 सेकंड के लिए बोलें:")}</p>
+                  <p className="text-xs text-slate-500 mt-1">{tr("Conducted once daily during morning muster. Check your mic, then speak steadily for 10 seconds:", "प्रातःकालीन रोल-कॉल के समय दिन में एक बार। माइक जांचें, फिर 10 सेकंड स्थिर गति से बोलें:")}</p>
                 </div>
                 <div className="p-3.5 bg-white rounded-lg border-2 border-dashed border-amber-300 max-w-md mx-auto">
                   <span className="text-navy-primary block font-bold text-sm sm:text-base leading-relaxed">
@@ -1107,8 +1177,7 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    const hasConsented = localStorage.getItem("dhvani_consent_accepted") === "true";
-                    if (hasConsented) {
+                    if (hasGivenConsent()) {
                       setPage("preflight");
                       runPreflight();
                     } else {
@@ -1119,7 +1188,11 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
                   className="px-6 py-2.5 rounded-lg bg-navy-primary hover:bg-navy-light disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs shadow-md transition-all cursor-pointer flex items-center justify-center space-x-2 mx-auto"
                 >
                   <Radio className="w-4 h-4 text-gold" />
-                  <span>{tr("Check Microphone & Start", "माइक्रोफ़ोन जांचें और शुरू करें")}</span>
+                  <span>
+                    {cooldownRemaining
+                      ? tr("Retest Check (Demo Mode)", "पुनः परीक्षण (डेमो मोड)")
+                      : tr("Check Microphone & Start", "माइक्रोफ़ोन जांचें और शुरू करें")}
+                  </span>
                   <ChevronRight className="w-3 h-3" />
                 </button>
                 <div className="pt-1">
@@ -1128,7 +1201,7 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
                     onClick={() => setPage("consent")}
                     className="text-[11px] text-slate-500 hover:text-navy-primary underline cursor-pointer"
                   >
-                    {tr("View Data Governance & Voluntary Consent Protocol (90-Day Retention)", "डेटा प्रशासन एवं स्वैच्छिक सहमति प्रोटोकॉल देखें (90-दिवसीय प्रतिधारण)")}
+                    {tr("View Data Governance & Enrollment Consent Protocol (90-Day Retention)", "डेटा प्रशासन एवं स्वैच्छिक सहमति प्रोटोकॉल देखें (90-दिवसीय प्रतिधारण)")}
                   </button>
                 </div>
               </div>
@@ -1145,7 +1218,7 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
                   <ShieldCheck className="w-5 h-5 text-navy-primary shrink-0" />
                   <div>
                     <h4 className="font-bold text-sm text-navy-primary">
-                      {tr("Voluntary Biometric Welfare Consent", "स्वैच्छिक बायोमेट्रिक कल्याण सहमति")}
+                      {tr("Voluntary Biometric Welfare Consent & Enrollment", "स्वैच्छिक बायोमेट्रिक कल्याण सहमति एवं नामांकन")}
                     </h4>
                     <p className="text-[11px] text-slate-600">
                       {tr("CAPF Personnel Data Governance & Privacy Standard (DPDP Aligned)", "सीएपीएफ कार्मिक डेटा प्रशासन एवं गोपनीयता मानक")}
@@ -1206,10 +1279,16 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 pt-2">
                   <button
                     type="button"
-                    onClick={() => setPage("idle")}
+                    onClick={() => {
+                      if (hasGivenConsent()) {
+                        setPage("idle");
+                      } else {
+                        onClose();
+                      }
+                    }}
                     className="w-full sm:w-auto px-4 py-2 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 text-xs font-semibold cursor-pointer"
                   >
-                    {tr("Back", "पीछे")}
+                    {hasGivenConsent() ? tr("Back", "पीछे") : tr("Cancel", "रद्द करें")}
                   </button>
                   <div className="flex items-center space-x-2 w-full sm:w-auto">
                     <button
@@ -1222,7 +1301,10 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
                     <button
                       type="button"
                       onClick={() => {
+                        const consentKey = getConsentKey();
+                        localStorage.setItem(consentKey, "true");
                         localStorage.setItem("dhvani_consent_accepted", "true");
+                        localStorage.setItem("dhvani_consent_timestamp", Date.now().toString());
                         setPage("preflight");
                         runPreflight();
                       }}
@@ -1599,54 +1681,53 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
           )}
 
           {/* ══════════════════════════════════════════════════════════════
-              PAGE: COMPLETED
+              PAGE: COMPLETED (TASK 1: Softened language; TASK 2: Auto-saved)
           ══════════════════════════════════════════════════════════════ */}
           {page === "completed" && biomarkers && (
             <div className="space-y-4 animate-in fade-in duration-200">
+              {/* Baseline Calibration Notice */}
               <div className="flex items-start space-x-2.5 text-xs text-navy-primary bg-blue-50/90 border border-blue-200 p-2.5 rounded-lg">
                 <Activity className="w-4 h-4 text-navy-primary shrink-0 mt-0.5" />
                 <div className="text-[11px] leading-snug">
-                  <span className="font-bold block">{tr("Compared against your personal baseline, not a generic threshold.", "आपके व्यक्तिगत बेसलाइन से तुलना।")}</span>
+                  <span className="font-bold block">{tr("Calibrated against your personal baseline, not a generic threshold.", "आपके व्यक्तिगत बेसलाइन से तुलना।")}</span>
                 </div>
               </div>
 
+              {/* Signal Quality Badge (TASK 1: Only Moderate or High confidence ever reaches here) */}
               <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-xs">
-                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${biomarkers.confidence_level === "High" ? "bg-emerald-50 text-emerald-800 border-emerald-300" : biomarkers.confidence_level === "Moderate" ? "bg-amber-50 text-amber-800 border-amber-300" : "bg-rose-50 text-rose-800 border-rose-300"}`}>
-                  {tr(`Confidence: ${biomarkers.confidence_level}`, `विश्वसनीयता: ${biomarkers.confidence_level}`)}
+                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${biomarkers.confidence_level === "High" ? "bg-emerald-50 text-emerald-800 border-emerald-300" : "bg-amber-50 text-amber-800 border-amber-300"}`}>
+                  {tr(`Signal Quality: ${biomarkers.confidence_level}`, `ध्वनि गुणवत्ता: ${biomarkers.confidence_level}`)}
                 </span>
                 <span className="text-[10px] text-slate-500 font-mono">SNR: {biomarkers.snr_db} dB • {biomarkers.voiced_duration_sec}s voiced</span>
               </div>
 
-              <div className={`p-4 rounded-xl border-l-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                biomarkers.strain_tier === "Nominal Baseline" ? "bg-emerald-50/80 border-emerald-600 text-emerald-950"
-                : biomarkers.strain_tier === "Moderate Strain" ? "bg-amber-50/80 border-amber-600 text-amber-950"
-                : "bg-rose-50/80 border-rose-600 text-rose-950"
-              }`}>
-                <div>
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 block">{tr("Vocal Acoustic Evaluation", "स्वर परीक्षण परिणाम")}</span>
-                  <div className="text-lg font-bold mt-0.5">
-                    {biomarkers.strain_tier === "Nominal Baseline" ? tr("Nominal Phonation (Steady Baseline)", "सामान्य स्वर (संतुलित बेसलाइन)")
-                     : biomarkers.strain_tier === "Moderate Strain" ? tr("Moderate Vocal Perturbation", "मध्यम स्वर तनाव")
-                     : tr("Elevated Acoustic Strain (Review Advised)", "उच्च स्वर तनाव (समीक्षा अनुशंसित)")}
-                  </div>
-                  <p className="text-xs mt-1 text-slate-700">
-                    {biomarkers.strain_tier === "Nominal Baseline" ? tr("Acoustic parameters within resting baseline.", "स्वर-तंतु कंपन पूर्णतः संतुलित।")
-                     : biomarkers.strain_tier === "Moderate Strain" ? tr("Mild vocal cord perturbation observed. Hydration and rest recommended.", "हल्की कंपन। जलपान व विश्राम अनुशंसित।")
-                     : tr("Marked acoustic perturbation. Medical officer welfare review advised.", "उच्च कंपन। चिकित्सा समीक्षा अनुशंसित।")}
-                  </p>
+              {/* Softened Calmer Self-Facing Completed Box (TASK 1) */}
+              <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/70 text-slate-900 flex items-start space-x-3.5 shadow-2xs">
+                <div className="w-10 h-10 rounded-full bg-emerald-100 border border-emerald-300 flex items-center justify-center shrink-0 text-emerald-700 mt-0.5">
+                  <CheckCircle2 className="w-5 h-5" />
                 </div>
-                <div className="text-left sm:text-right shrink-0">
-                  <span className="text-[10px] text-slate-500 block uppercase font-bold">{tr("Strain Score", "तनाव स्कोर")}</span>
-                  <span className="text-2xl font-extrabold text-navy-primary font-mono">{biomarkers.strain_score}%</span>
+                <div className="space-y-1">
+                  <h4 className="font-bold text-base text-navy-primary">
+                    {tr("Check-in recorded — thank you", "दैनिक चेक-इन दर्ज — धन्यवाद")}
+                  </h4>
+                  <p className="text-xs text-slate-700 leading-relaxed">
+                    {biomarkers.strain_tier === "Nominal Baseline"
+                      ? tr("Acoustic parameters recorded within personal baseline. Have a safe and steady duty shift.", "ध्वनिक मापदंड व्यक्तिगत बेसलाइन के अनुकूल दर्ज। सुरक्षित ड्यूटी करें।")
+                      : tr("Acoustic parameters recorded for your daily wellness profile. Remember to stay hydrated and take scheduled rest breaks.", "दैनिक स्वास्थ्य प्रोफाइल हेतु ध्वनिक मापदंड दर्ज। पर्याप्त जलपान रखें और समय पर विश्राम लें।")}
+                  </p>
+                  <p className="text-[10px] text-slate-500">
+                    {tr("Detailed clinical evaluations and trend analytics are maintained confidentially by the Unit Welfare Officer.", "विस्तृत मूल्यांकन एवं रुझान विश्लेषण यूनिट वेलफेयर ऑफिसर द्वारा गोपनीय रूप से प्रबंधित हैं।")}
+                  </p>
                 </div>
               </div>
 
+              {/* Neutral Physical Acoustic Telemetry (Pitch, Jitter, Shimmer, HNR) */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
                 {[
                   { label: tr("Pitch (F0)", "पिच F0"), value: `${biomarkers.pitch_hz} Hz`, note: biomarkers.pitch_min_hz && biomarkers.pitch_max_hz ? `${biomarkers.pitch_min_hz}–${biomarkers.pitch_max_hz} Hz` : "" },
-                  { label: tr("Jitter", "Jitter"), value: `${biomarkers.jitter_pct}%`, note: tr("Norm: < 0.85%", "मानक: < 0.85%") },
-                  { label: tr("Shimmer", "Shimmer"), value: `${biomarkers.shimmer_pct}%`, note: tr("Norm: < 2.80%", "मानक: < 2.80%") },
-                  { label: tr("HNR", "HNR"), value: `${biomarkers.hnr_db} dB`, note: tr("Norm: > 21 dB", "मानक: > 21 dB") },
+                  { label: tr("Jitter (RAP)", "Jitter"), value: `${biomarkers.jitter_pct}%`, note: tr("Frequency micro-tremor", "आवृत्ति सूक्ष्म-कंपन") },
+                  { label: tr("Shimmer (APQ)", "Shimmer"), value: `${biomarkers.shimmer_pct}%`, note: tr("Amplitude stability", "आयाम स्थिरता") },
+                  { label: tr("HNR (Clarity)", "HNR"), value: `${biomarkers.hnr_db} dB`, note: tr("Harmonic clarity", "हार्मोनिक स्पष्टता") },
                 ].map(({ label, value, note }) => (
                   <div key={label} className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
                     <span className="text-[10px] font-bold text-slate-500 block">{label}</span>
@@ -1656,7 +1737,8 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
                 ))}
               </div>
 
-              {submitResult && (
+              {/* Auto-Save Confirmation Banner (TASK 2) */}
+              {submitResult ? (
                 submitResult.status === "offline_cached" ? (
                   <div className="p-3.5 bg-amber-50/90 border border-amber-300 rounded-lg text-xs text-amber-950 flex items-start space-x-2.5">
                     <Radio className="w-4 h-4 text-amber-600 shrink-0 mt-0.5 animate-pulse" />
@@ -1673,12 +1755,6 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
                           "ध्वनिक बायोमेट्रिक डेटा सुरक्षित ऑन-डिवाइस बेसलाइन में सहेजा गया। नेटवर्क बहाल होने पर स्वतः सिंक होगा।"
                         )}
                       </p>
-                      {submitResult.prior_14d_checks_count > 0 && (
-                        <div className="text-[11px] text-amber-900 font-semibold pt-0.5">
-                          {tr("Local Trailing Drift: ", "स्थानीय बेसलाइन विचलन: ")}
-                          <span className="font-mono font-bold">{submitResult.strain_drift_vs_baseline > 0 ? `+${submitResult.strain_drift_vs_baseline}` : submitResult.strain_drift_vs_baseline}%</span>
-                        </div>
-                      )}
                       <div className="text-[10px] text-amber-900/80 font-mono pt-1.5 flex items-center justify-between border-t border-amber-200 mt-1">
                         <span>{tr("Recorded At:", "रिकॉर्ड समय:")} {formatRealDateTime(submitResult.created_at || new Date())}</span>
                         <span className="font-sans font-semibold text-amber-800">IST (UTC+5:30)</span>
@@ -1696,14 +1772,8 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
                         </span>
                       </div>
                       <p className="text-[11px] text-emerald-800 leading-relaxed">
-                        {tr("Acoustic biomarkers verified and saved to Unit Medical Cell baseline database.", "ध्वनिक बायोमार्कर सत्यापित एवं यूनिट मेडिकल सेल बेसलाइन डेटाबेस में दर्ज।")}
+                        {tr("Acoustic parameters verified and saved to Unit Medical Cell baseline database.", "ध्वनिक बायोमार्कर सत्यापित एवं यूनिट मेडिकल सेल बेसलाइन डेटाबेस में दर्ज।")}
                       </p>
-                      {submitResult.prior_14d_checks_count > 0 && (
-                        <div className="text-[11px] text-emerald-800 font-semibold pt-0.5">
-                          {tr("Baseline Drift (vs 14-day trailing): ", "14-दिवसीय बेसलाइन विचलन: ")}
-                          <span className="font-mono font-bold">{submitResult.strain_drift_vs_baseline > 0 ? `+${submitResult.strain_drift_vs_baseline}` : submitResult.strain_drift_vs_baseline}%</span>
-                        </div>
-                      )}
                       <div className="text-[10px] text-emerald-900/80 font-mono pt-1.5 flex items-center justify-between border-t border-emerald-200 mt-1">
                         <span>{tr("Recorded At:", "रिकॉर्ड समय:")} {formatRealDateTime(submitResult.created_at || new Date())}</span>
                         <span className="font-sans font-semibold text-emerald-800">IST (UTC+5:30)</span>
@@ -1711,46 +1781,64 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
                     </div>
                   </div>
                 )
+              ) : isSubmitting ? (
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-600 flex items-center space-x-2">
+                  <div className="w-3.5 h-3.5 border-2 border-navy-primary border-t-transparent rounded-full animate-spin" />
+                  <span>{tr("Auto-saving to health record...", "स्वास्थ्य रिकॉर्ड में स्वतः दर्ज हो रहा है...")}</span>
+                </div>
+              ) : null}
+
+              {/* Cooldown Status (TASK 3: 24h daily roll-call cadence) */}
+              {cooldownRemaining && (
+                <div className="py-2.5 px-3.5 rounded-lg bg-slate-100 border border-slate-300 text-slate-600 text-xs font-semibold flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span>🔒</span>
+                    <span>{tr(`Next daily roll-call check-in in ${cooldownRemaining}`, `अगली दैनिक जांच ${cooldownRemaining} में`)}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      localStorage.removeItem(COOLDOWN_KEY);
+                      setCooldownRemaining(null);
+                    }}
+                    className="text-[10px] font-bold text-navy-primary hover:underline cursor-pointer bg-slate-200 hover:bg-slate-300 px-2.5 py-0.5 rounded shadow-2xs"
+                    title="Reset cooldown for demonstration / evaluation"
+                  >
+                    {tr("Reset Demo", "डेमो रीसेट")}
+                  </button>
+                </div>
               )}
 
               <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] text-slate-500 text-center">
                 {tr("Dhvani is an auxiliary early-warning screening tool, not a psychiatric diagnosis.", "ध्वनि एक सहायक प्रारंभिक चेतावनी संकेतक है, मनोरोग निदान नहीं।")}
               </div>
 
+              {/* Action Bar (TASK 2: Removed manual click-gate) */}
               <div className="pt-2 flex flex-wrap gap-2.5">
-                {!submitResult ? (
-                  cooldownRemaining ? (
-                    <div className="flex-1 py-3 px-4 rounded-lg bg-slate-100 border border-slate-300 text-slate-600 text-xs font-semibold flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <span>🔒</span>
-                        <span>{tr(`Next check-in in ${cooldownRemaining}`, `अगली जांच ${cooldownRemaining} में`)}</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          localStorage.removeItem(COOLDOWN_KEY);
-                          setCooldownRemaining(null);
-                        }}
-                        className="text-[10px] font-bold text-navy-primary hover:underline cursor-pointer bg-slate-200/80 hover:bg-slate-300 px-2 py-0.5 rounded"
-                        title="Reset cooldown for demonstration / evaluation"
-                      >
-                        {tr("Reset Demo", "डेमो रीसेट")}
-                      </button>
-                    </div>
-                  ) : (
-                    <button type="button" onClick={handleSaveToRecord} disabled={isSubmitting} className="flex-1 py-2.5 px-4 rounded-lg bg-navy-primary hover:bg-navy-light text-white font-bold text-xs shadow-xs transition-all cursor-pointer flex items-center justify-center space-x-1.5">
-                      <FileText className="w-4 h-4" />
-                      <span>{isSubmitting ? tr("Saving...", "दर्ज...") : tr("Save to Health Baseline", "स्वास्थ्य रिकॉर्ड में दर्ज करें")}</span>
-                    </button>
-                  )
-                ) : (
-                  <button type="button" onClick={resetToIdle} className="flex-1 py-2.5 px-4 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all cursor-pointer flex items-center justify-center space-x-1.5 border border-slate-300">
-                    <RotateCcw className="w-4 h-4" /><span>{tr("Run Another Check", "पुनः परीक्षण")}</span>
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => { stopAudioCapture(); onClose(); }}
+                  className="flex-1 py-2.5 px-4 rounded-lg bg-navy-primary hover:bg-navy-light text-white font-bold text-xs shadow-xs transition-all cursor-pointer flex items-center justify-center space-x-1.5"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-gold" />
+                  <span>{tr("Done", "पूर्ण")}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={resetToIdle}
+                  className="py-2.5 px-4 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all cursor-pointer flex items-center justify-center space-x-1.5 border border-slate-300"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  <span>{tr("Run Another Check", "पुनः परीक्षण")}</span>
+                </button>
                 {biomarkers.strain_score > 35 && onOpenVishram && (
-                  <button type="button" onClick={() => { onClose(); onOpenVishram(); }} className="py-2.5 px-4 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-xs transition-all cursor-pointer flex items-center justify-center space-x-1.5">
-                    <Activity className="w-4 h-4" /><span>{tr("Open Vishram Pacing", "विश्राम पेसिंग")}</span>
+                  <button
+                    type="button"
+                    onClick={() => { onClose(); onOpenVishram(); }}
+                    className="py-2.5 px-4 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-xs transition-all cursor-pointer flex items-center justify-center space-x-1.5"
+                  >
+                    <Activity className="w-4 h-4" />
+                    <span>{tr("Open Vishram Pacing", "विश्राम पेसिंग")}</span>
                   </button>
                 )}
               </div>
@@ -1758,7 +1846,7 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
           )}
 
           {/* ══════════════════════════════════════════════════════════════
-              FAILURE PAGES
+              FAILURE PAGES (TASK 1: Re-use failed_quality for Low confidence retake)
           ══════════════════════════════════════════════════════════════ */}
           {(page === "failed_silence" || page === "failed_quality" || page === "failed_permission" || page === "failed_error") && (
             <div className={`p-6 rounded-xl text-center space-y-4 animate-in fade-in border-2 ${
@@ -1777,13 +1865,13 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
               <div>
                 <h4 className="font-bold text-base">
                   {page === "failed_permission" ? tr("Microphone Access Denied", "माइक्रोफ़ोन अनुमति अस्वीकृत")
-                   : page === "failed_quality" ? tr("Signal Quality Too Low", "ध्वनि गुणवत्ता अपर्याप्त")
+                   : page === "failed_quality" ? tr("Signal Quality Inadequate — Retake Required", "ध्वनि गुणवत्ता अपर्याप्त — पुनः प्रयास आवश्यक")
                    : page === "failed_error" ? tr("Hardware Error", "हार्डवेयर त्रुटि")
                    : tr("No Speech Audio Detected", "कोई आवाज़ दर्ज नहीं")}
                 </h4>
-                <p className="text-xs mt-1.5 max-w-md mx-auto leading-relaxed opacity-80">
+                <p className="text-xs mt-1.5 max-w-md mx-auto leading-relaxed text-slate-700">
                   {page === "failed_permission" ? tr("Grant microphone permission via the 🔒 lock in your address bar.", "एड्रेस बार में 🔒 से माइक्रोफ़ोन की अनुमति दें।")
-                   : page === "failed_quality" ? tr(qualityNotice?.en || "Audio quality too low — try a quieter location.", qualityNotice?.hi || "ध्वनि गुणवत्ता अपर्याप्त — शांत स्थान पर प्रयास करें।")
+                   : page === "failed_quality" ? tr(qualityNotice?.en || "The recording did not meet acoustic quality requirements (low SNR and/or short voiced duration). Please retry in a quieter spot and speak for the full 10 seconds.", qualityNotice?.hi || "रिकॉर्डिंग ध्वनि गुणवत्ता आवश्यकताओं के अनुरूप नहीं थी (कम SNR या अपर्याप्त आवाज़)। कृपया शांत स्थान पर पुनः प्रयास करें और पूरे 10 सेकंड बोलें।")
                    : tr("The microphone did not pick up audible speech. Use the Mic Check step to diagnose the issue.", "माइक्रोफ़ोन में आवाज़ नहीं आई। माइक जांच चरण से समस्या पहचानें।")}
                 </p>
               </div>
@@ -1808,6 +1896,7 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
               </div>
             </div>
           )}
+
 
         </div>
       </div>

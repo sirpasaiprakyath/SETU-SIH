@@ -716,10 +716,12 @@ export const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser }) => 
             <div className="flex items-center space-x-3 shrink-0">
               {recentVocalCheck && (
                 <div className="text-right text-[11px] bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700 hidden sm:block">
-                  <span className="text-slate-400 block text-[10px]">{language === "hi" ? "अंतिम जांच:" : "Last Checked:"}</span>
+                  <span className="text-slate-400 block text-[10px]">{language === "hi" ? "दैनिक रोल-कॉल जांच:" : "Daily Roll-Call Check:"}</span>
                   <div className="flex items-center justify-end space-x-1.5">
-                    <strong className="text-emerald-400">{recentVocalCheck.strain_score}%</strong>
-                    <span className="text-[10px] text-slate-300">({recentVocalCheck.strain_tier})</span>
+                    <span className="inline-flex items-center space-x-1 text-emerald-400 font-semibold">
+                      <CheckCircle className="w-3 h-3 text-emerald-400" />
+                      <span>{language === "hi" ? "जांच दर्ज" : "Check-in Recorded"}</span>
+                    </span>
                     {recentVocalCheck.status === "offline_cached" && (
                       <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
                         FOB Mode
@@ -3059,6 +3061,7 @@ export const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser }) => 
       <VoiceStrainModal
         isOpen={isVoiceModalOpen}
         onClose={() => setIsVoiceModalOpen(false)}
+        currentUser={currentUser}
         onSuccessCheckin={(res) => {
           setRecentVocalCheck(res);
         }}
