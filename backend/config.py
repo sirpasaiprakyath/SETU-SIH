@@ -22,7 +22,9 @@ if not raw_db_url or raw_db_url == "sqlite:///./guardian_minds.db":
     db_file = BACKEND_DIR / "guardian_minds.db"
     DATABASE_URL = f"sqlite:///{db_file.as_posix()}"
 elif raw_db_url.startswith("postgres://"):
-    DATABASE_URL = raw_db_url.replace("postgres://", "postgresql://", 1)
+    DATABASE_URL = raw_db_url.replace("postgres://", "postgresql+psycopg2://", 1)
+elif raw_db_url.startswith("postgresql://") and not raw_db_url.startswith("postgresql+"):
+    DATABASE_URL = raw_db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 else:
     DATABASE_URL = raw_db_url
 

@@ -34,9 +34,11 @@ from models import (
 )
 
 def run_migration(target_db_url: str):
-    # Normalize postgres:// to postgresql://
+    # Normalize postgres:// and bare postgresql:// to postgresql+psycopg2://
     if target_db_url.startswith("postgres://"):
-        target_db_url = target_db_url.replace("postgres://", "postgresql://", 1)
+        target_db_url = target_db_url.replace("postgres://", "postgresql+psycopg2://", 1)
+    elif target_db_url.startswith("postgresql://") and not target_db_url.startswith("postgresql+"):
+        target_db_url = target_db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
     backend_dir = Path(__file__).resolve().parent
     sqlite_path = backend_dir / "guardian_minds.db"
