@@ -1,9 +1,10 @@
+from __future__ import annotations
 import os
 import json
 import logging
 import numpy as np
 import pandas as pd
-from typing import Tuple, List, Dict, Any
+from typing import Tuple, List, Dict, Any, Optional, Union
 from config import MODEL_PATH
 
 logger = logging.getLogger("guardian_minds.model_service")
