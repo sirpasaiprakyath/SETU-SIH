@@ -653,21 +653,20 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
       );
 
       // Use noise floor measured in preflight to establish dynamic speech floor
-      const noiseRms = Math.max(0.005, preflightNoiseFloorRmsRef.current);
-      const minSpeechRms = Math.max(0.010, noiseRms * 1.5);
+      const noiseRms = Math.min(0.015, Math.max(0.003, preflightNoiseFloorRmsRef.current));
+      const minSpeechRms = Math.max(0.005, noiseRms * 1.15);
 
       // ── Jitter-eligible voiced frame: must pass VAD AND be periodic ───────
       const isJitterEligible =
         frame.rms >= minSpeechRms &&
         frame.isVoiced &&
-        frame.pitchHz >= 75 && frame.pitchHz <= 550 &&
-        frame.hnrDb >= 13.0;
+        frame.pitchHz >= 65 && frame.pitchHz <= 600 &&
+        frame.hnrDb >= 8.0;
 
-      // ── Speech-present frame: require energy above noise floor AND harmonicity ──
+      // ── Speech-present frame: require energy above noise floor OR harmonicity ──
       const isSpeechFrame =
         frame.rms >= minSpeechRms &&
-        frame.isVoiced &&
-        frame.hnrDb >= 12.0;
+        (frame.isVoiced || frame.hnrDb >= 8.0);
 
       if (isSpeechFrame) {
         setSpeechDetected(true);
@@ -761,9 +760,9 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
       }
 
       const voicedDurationSec = Math.round(((voicedFramesRef.current * 40) / 1000) * 10) / 10;
-      if (voicedDurationSec < 1.0) {
+      if (voicedDurationSec < 0.4 && speechRmsSamplesRef.current.length < 8) {
         zeroWipeBuffer(buffer);
-        setQualityNotice({ en: "Speech audio too brief (less than 1.0s detected). Please speak the complete roll-call phrase steadily.", hi: "आवाज की अवधि बहुत कम। कृपया पूरा वाक्य स्थिर गति से बोलें।" });
+        setQualityNotice({ en: "Speech audio too brief. Please speak the roll-call phrase or hold a vowel steadily for a couple of seconds.", hi: "आवाज की अवधि बहुत कम। कृपया स्थिर गति से बोलें।" });
         setPage("failed_quality");
         return;
       }
