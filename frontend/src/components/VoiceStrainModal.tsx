@@ -241,9 +241,11 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
       // Enumerate input devices so user can pick the right mic
       const loadDevices = async () => {
         try {
-          const devices = await navigator.mediaDevices.enumerateDevices();
-          const inputs = devices.filter(d => d.kind === "audioinput");
-          setAudioDevices(inputs);
+          if (navigator?.mediaDevices?.enumerateDevices) {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const inputs = devices.filter(d => d.kind === "audioinput");
+            setAudioDevices(inputs);
+          }
         } catch (_) {}
       };
       loadDevices();
@@ -315,6 +317,17 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
     preflightNoiseFloorRmsRef.current = 0;
     setPreflightError("");
     stopPreflight();
+
+    if (!navigator?.mediaDevices?.getUserMedia) {
+      const isHttps = typeof window !== "undefined" && window.location.protocol === "https:";
+      const reason = !isHttps
+        ? "Microphone access requires a secure HTTPS connection. Please ensure you are accessing via https://."
+        : "Microphone hardware API is unavailable or unsupported in this browser.";
+      console.error("Dhvani preflight error:", reason);
+      setPreflightError(reason);
+      setPreflightResult("error");
+      return;
+    }
 
     let stream: MediaStream;
     try {
@@ -554,6 +567,17 @@ export const VoiceStrainModal: React.FC<VoiceStrainModalProps> = ({
     silenceGapCounterRef.current = 0;
 
     // ── Get microphone ────────────────────────────────────────────────────
+    if (!navigator?.mediaDevices?.getUserMedia) {
+      const isHttps = typeof window !== "undefined" && window.location.protocol === "https:";
+      console.error(
+        !isHttps
+          ? "Recording getUserMedia error: navigator.mediaDevices.getUserMedia is unavailable on non-HTTPS origins."
+          : "Recording getUserMedia error: navigator.mediaDevices.getUserMedia is unsupported."
+      );
+      setPage("failed_error");
+      return;
+    }
+
     let stream: MediaStream;
     try {
       const audioConstraint: MediaTrackConstraints = selectedDeviceId

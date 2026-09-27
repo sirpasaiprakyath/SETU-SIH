@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from database import engine
 from models import Base
 from seed_data import seed_database
+from config import CORS_ORIGINS_RAW, FRONTEND_URL
 
 # Import routers
 from routes.auth_routes import router as auth_router
@@ -23,13 +24,33 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS configuration for local React Vite frontend
+# ── CORS Configuration ────────────────────────────────────────────────────────
+# Build allowed origins list from environment variables and local development defaults
+allowed_origins = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
+]
+
+for raw in [CORS_ORIGINS_RAW, FRONTEND_URL]:
+    if raw:
+        for entry in raw.split(","):
+            cleaned = entry.strip().rstrip("/")
+            if cleaned and cleaned not in allowed_origins:
+                allowed_origins.append(cleaned)
+
+# Regex matches localhost, Vercel preview/production domains, Netlify domains, and Render
+cors_regex = r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$|^https://.*\.vercel\.app$|^https://.*\.netlify\.app$|^https://.*\.onrender\.com$"
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
+    allow_origins=allowed_origins,
+    allow_origin_regex=cors_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Register route modules
@@ -46,6 +67,10 @@ app.include_router(simulator_router)
 
 def migrate_sqlite_columns():
     """Ensures newly added columns in PersonnelProfile and PeerFlag are safely present in SQLite."""
+    # Only applies to SQLite where DDL migrations aren't managed by PostgreSQL
+    if engine.dialect.name != "sqlite":
+        return
+
     from sqlalchemy import text
     try:
         with engine.connect() as conn:
@@ -99,10 +124,39 @@ def on_startup():
     except Exception as e:
         print(f"[Startup Warning] Seeding deferred or error: {e}")
 
-@app.get("/api/health")
-def health_check():
+@app.get("/")
+def root_endpoint():
     return {
         "status": "operational",
+        "system": "SETU (सेतु) — SIH26186 API",
+        "description": "MHA Predictive Personnel Welfare Monitoring System for CAPF",
+        "team": "Guardian Minds",
+        "endpoints": {
+            "health": "/health",
+            "api_health": "/api/health",
+            "documentation": "/docs"
+        }
+    }
+
+@app.get("/health")
+@app.get("/api/health")
+def health_check():
+    """
+    Lightweight health endpoint for Render health checks and external keep-alive pings (cron-job.org / UptimeRobot).
+    Pings the database with SELECT 1 to verify database responsiveness.
+    """
+    db_status = "operational"
+    try:
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+    except Exception as e:
+        db_status = f"degraded: {str(e)}"
+
+    return {
+        "status": "operational" if "degraded" not in db_status else "degraded",
+        "database": db_status,
+        "dialect": engine.dialect.name,
         "system": "SETU (सेतु) — SIH26186 Personnel Welfare Monitoring System",
         "team": "Guardian Minds",
         "jurisdiction": "Ministry of Home Affairs (MHA), Government of India"

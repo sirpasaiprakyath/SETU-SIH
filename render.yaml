@@ -1,0 +1,40 @@
+# Render Blueprint Specification for SETU (SIH26186)
+# Automatically provisions FastAPI Backend Web Service and Managed PostgreSQL Database
+services:
+  - type: web
+    name: setu-backend
+    runtime: python
+    region: oregon
+    plan: free
+    rootDir: backend
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: DATABASE_URL
+        fromDatabase:
+          name: setu-postgres
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "480"
+      - key: CORS_ORIGINS
+        value: "https://your-app.vercel.app,https://your-app.netlify.app"
+      - key: FRONTEND_URL
+        value: "https://your-app.vercel.app"
+      - key: AUDIT_ENABLED
+        value: "True"
+      - key: DATA_RETENTION_DAYS
+        value: "90"
+
+databases:
+  - name: setu-postgres
+    region: oregon
+    plan: free
+    databaseName: setu_db
+    user: setu_user

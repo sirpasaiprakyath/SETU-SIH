@@ -19,7 +19,16 @@ import type {
   PresetScenarioInfo
 } from "./types";
 
-const API_BASE = (import.meta as any).env?.VITE_API_URL || "http://localhost:8000/api";
+function resolveApiBase(): string {
+  const envUrl = (import.meta as any).env?.VITE_API_URL as string | undefined;
+  if (!envUrl || typeof envUrl !== "string" || !envUrl.trim()) {
+    return "http://localhost:8000/api";
+  }
+  const clean = envUrl.trim().replace(/\/+$/, "");
+  return clean.endsWith("/api") ? clean : `${clean}/api`;
+}
+
+export const API_BASE = resolveApiBase();
 
 export function getToken(): string | null {
   return localStorage.getItem("gm_auth_token");

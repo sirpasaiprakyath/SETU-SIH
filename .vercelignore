@@ -1,0 +1,7 @@
+# Tell Vercel to only track and build the frontend, ignoring backend
+backend/
+scratch/
+*.pptx
+*.pdf
+*.bat
+*.ps1

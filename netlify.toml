@@ -1,0 +1,19 @@
+# Netlify configuration for SETU (SIH26186) Frontend
+[build]
+  base = "frontend"
+  publish = "dist"
+  command = "npm run build"
+
+# Single-Page Application (SPA) routing
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Security and Hardware Permission Headers (for Dhvani 10s voice check-in)
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Permissions-Policy = "microphone=(self)"
