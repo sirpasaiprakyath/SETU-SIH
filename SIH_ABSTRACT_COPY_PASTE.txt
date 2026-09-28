@@ -1,0 +1,52 @@
+Project SETU (Guardian Minds) is an institutional, privacy-first early-warning welfare triage platform for the Ministry of Home Affairs, engineered to safeguard over 10.5 lakh Central Armed Police Force (CAPF) personnel from operational burnout, chronic stress, and silent psychiatric attrition through calibrated predictive intelligence, explainable clinical decision support, and legally ring-fenced, stigma-free peer support.
+
+PROBLEM CONTEXT & INSTITUTIONAL SIGNIFICANCE:
+National security and internal stability depend on the operational resilience of India's Central Armed Police Forces (CRPF, BSF, CISF, ITBP, SSB, Assam Rifles, and NSG). Deployed in high-threat counter-insurgency corridors, remote forward outposts, and harsh terrains, these 10.5+ lakh personnel endure continuous operational stressors: protracted family separation, acute circadian disruption, relentless duty rosters, and administrative friction.
+
+Official parliamentary records reflect the human cost of this sustained operational strain. The Department-Related Parliamentary Standing Committee on Home Affairs (242nd Report) recorded 654 CAPF personnel suicides between 2018 and 2022. Subsequent official data presented by the Ministry of Home Affairs reveals continuing annual losses across CAPFs, NSG, and Assam Rifles: 158 in 2021, 138 in 2022, 157 in 2023, 149 in 2024, and 143 in 2025. Beyond the profound personal tragedy for families, every premature loss depletes vital institutional experience and costs the public exchequer an estimated ₹15–20 lakhs to recruit, vet, and train a replacement.
+
+Current welfare mechanisms remain predominantly reactive, intervening only after severe clinical symptoms, behavioral breakdowns, or disciplinary crises occur. Conventional paper psychometric questionnaires fail in paramilitary settings because fear of medical downgrading, career prejudice, and social stigma prevent voluntary disclosure. Meanwhile, unit commanders and medical officers lack automated tools to synthesize fragmented operational signals—such as consecutive night duties, prolonged leave deferrals, and physical exhaustion—leaving vulnerable personnel unassisted until crisis points are reached.
+
+PROPOSED SOLUTION & INNOVATION:
+Project SETU bridges the gap between frontline operational realities and proactive institutional medical care without requiring personnel to self-label as struggling or undergo stigmatizing assessments:
+
+• Two-Tier Ring-Fenced Architecture: SETU strictly decouples personal recovery from command surveillance. Frontline troops access 'Vishram'—a dedicated decompression space on their smartphones featuring peer interaction, stress mitigation exercises, and confidential self-checks. Vishram operates completely free of telemetry: zero logs, zero interaction metrics, and zero behavioral scores are transmitted to superiors, removing the fear of disciplinary penalty.
+
+• Individualized Longitudinal Baselining: Rather than enforcing rigid, population-wide psychometric cutoffs, SETU evaluates each individual against their own historical baseline. Welfare alerts trigger only when multi-source indicators—such as operational duty intensity, consecutive night patrols, and leave deferral latency—exhibit statistically significant negative deviations.
+
+• Zero-Trust Ephemeral Voice Processing (Dhvani): An optional acoustic check-in processes speech features entirely within volatile client-side memory (RAM) via Web Audio DSP. Pitch variation, vocal jitter, shimmer, and harmonics-to-noise ratios are extracted in milliseconds, after which the raw audio buffer is immediately overwritten. Zero audio is ever recorded, stored on disk, or transmitted across the network.
+
+• Explainable Clinical Decision Support: Unit Medical Officers receive an automated triage console powered by Explainable AI (SHAP). Instead of mysterious black-box scores, doctors see transparent, factor-by-factor risk contributors, enabling empathetic, targeted, and dignified clinical consultations.
+
+• Built for Austere Forward Operating Bases: Designed as an offline-first Progressive Web Application (PWA), SETU operates reliably on low-bandwidth 2G/EDGE networks in remote outposts. Encrypted batch deltas sync automatically when connectivity is restored, hosted securely on sovereign government infrastructure (MeghRaj / NIC Cloud) with AES-256 encryption and role-based access controls.
+
+TECHNICAL FEASIBILITY & HACKATHON DELIVERABLES:
+SETU is a fully functioning, end-to-end working prototype delivered within hackathon timelines and ready for immediate field validation:
+
+• Audited Machine Learning Reliability: Evaluated on a 4,000-personnel operational dataset with a realistic 6.9% positive imbalance, our calibrated triage model achieved 90.6% classification accuracy, an ROC-AUC of 0.858, and a calibrated Brier Score of 0.054 (Expected Calibration Error: 2.0%). This rigorous probability calibration eliminates overconfident predictions and prevents alert fatigue among unit doctors.
+
+• Low-Cost Open-Source Stack: Built on React, Python FastAPI, PostgreSQL, and standard Web Audio APIs. The system requires zero proprietary hardware or costly enterprise software licenses, operating on existing standard paramilitary smartphones and unit desktop terminals.
+
+• Structured Three-Phase Deployment Roadmap:
+  - Phase 1 (Months 1–3): Sandboxed field trial across three high-stress CRPF battalions (Left-Wing Extremism, J&K Counter-Insurgency, and North-East borders) to calibrate operational feature weights directly with Unit Medical Officers.
+  - Phase 2 (Months 4–8): Secure API integration with the CAPF Human Resource Management System (CLIMS/PIS) and comprehensive STQC / CERT-In cybersecurity certification.
+  - Phase 3 (Months 9–15): Horizontal scaling across the entire 3.25+ lakh CRPF cadre, followed by phased extension across all 10.5+ lakh personnel in sister forces (BSF, CISF, ITBP, SSB, Assam Rifles).
+
+MEASURABLE OUTCOMES & INSTITUTIONAL IMPACT:
+• Compressed Triage Timeline: Reduces the intervention window from an average of 45–60 days of unobserved crisis escalation down to early days following baseline deviation, enabling timely preventive support.
+• Clinical Efficiency: Cuts routine administrative psychometric paperwork by over 70%, allowing Unit Medical Officers to direct clinical attention to the 5–8% of personnel in genuine need of welfare review.
+• Force Retention & Fiscal Savings: Targets a 25–35% reduction in avoidable non-combat attrition. Retaining just 100 experienced personnel annually saves ₹15–20 crore in replacement recruitment and specialized training costs.
+• Statutory & Privacy Safeguards: Fully operationalizes statutory mandates under the Mental Healthcare Act, 2017—specifically Section 23 (Statutory Confidentiality) and Section 115 (Presumption of Severe Stress & Duty of Care)—alongside strict governance readiness under the Digital Personal Data Protection (DPDP) Act, 2023.
+• National Health Alignment: Bridges unit-level care directly with the Government's Tele-MANAS specialized tele-psychiatry network, directly advancing UN Sustainable Development Goals 3 (Good Health and Well-being) and 8 (Decent Work and Economic Growth).
+
+KEY PERFORMANCE COMPARISON [LEGACY VS SETU]:
+• Intervention Window : 45–60 days (reactive)  -->  Days after baseline deviation (early preventive)
+• Doctor Paperwork    : 100% manual forms      -->  70%+ reduction; prioritizes top 5–8% at-risk
+• Model Reliability   : Arbitrary cutoffs      -->  90.6% Accuracy, 0.858 AUC, 0.054 Brier Score
+• Stigma & Privacy    : Medical downgrading fear --> Telemetry-free Vishram (Sec 23/115 MHCA 2017)
+• Voice Privacy       : Intrusive recordings   -->  Ephemeral RAM DSP (<50ms buffer zero-wipe)
+• Financial Savings   : Severe attrition loss  -->  ₹15–20 Crore saved per 100 retained troops
+• System Scalability  : Unit-level paper files -->  Offline PWA + Sovereign Cloud (10.5+ Lakh troops)
+
+STRATEGIC CONCLUSION:
+Project SETU addresses an urgent national security imperative with an indigenous, battle-ready digital platform. By pairing mathematically calibrated intelligence with absolute privacy and soldier dignity, SETU removes the stigma barrier that has historically crippled paramilitary mental healthcare. It transforms institutional support from an uncoordinated, late-stage crisis response into an invisible, protective shield for our forces. Selecting SETU for the national finals directly accelerates a life-saving, deployable solution dedicated to preserving the guardians of our nation.

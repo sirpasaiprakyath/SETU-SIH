@@ -9,7 +9,7 @@ import { DoctorView } from "./components/DoctorView";
 import { CommandView } from "./components/CommandView";
 import { AdminView } from "./components/AdminView";
 import { PublicAbout } from "./components/PublicAbout";
-import { Shield, Lock, AlertCircle } from "lucide-react";
+import { Lock, AlertCircle } from "lucide-react";
 
 export function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -117,9 +117,11 @@ export function App() {
             <div className="gov-card p-6 sm:p-8 border-t-4 border-navy-primary">
               {/* National Header in Login Box */}
               <div className="text-center mb-6">
-                <div className="w-12 h-12 rounded-[3px] bg-gold text-navy-primary flex items-center justify-center mx-auto mb-3 border border-gold-dark font-bold">
-                  <Shield className="w-6 h-6 text-navy-primary font-bold" />
-                </div>
+                <img
+                  src="/SETU_LOGO.png"
+                  alt="SETU Guardian Minds Logo"
+                  className="w-14 h-14 rounded-[6px] object-contain bg-white p-1 border-2 border-gold-dark mx-auto mb-3 shadow-md"
+                />
                 <span className="badge-khaki font-semibold mb-1">
                   Ministry of Home Affairs • Government of India
                 </span>
@@ -192,8 +194,9 @@ export function App() {
                     onClick={() => loginAsDemoUser("personnel_demo")}
                     className="p-2.5 rounded bg-neutral-card hover:bg-neutral-hover border border-neutral-border text-left transition-colors group"
                   >
-                    <div className="font-bold text-navy-primary group-hover:text-navy-light">
-                      1. Frontline Personnel (Shifted Pattern)
+                    <div className="font-bold text-navy-primary group-hover:text-navy-light flex items-center justify-between">
+                      <span>1. Frontline Personnel (Shifted)</span>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-900 font-bold">📱 Mobile App</span>
                     </div>
                     <div className="text-[10px] text-text-muted mt-0.5">
                       Ct. Rajesh Kumar Singh • Soft Invite & 100% Decline Privacy
@@ -205,8 +208,9 @@ export function App() {
                     onClick={() => loginAsDemoUser("personnel_calm")}
                     className="p-2.5 rounded bg-neutral-card hover:bg-neutral-hover border border-neutral-border text-left transition-colors group"
                   >
-                    <div className="font-bold text-navy-primary group-hover:text-navy-light">
-                      2. Frontline Personnel (Normal Baseline)
+                    <div className="font-bold text-navy-primary group-hover:text-navy-light flex items-center justify-between">
+                      <span>2. Frontline Personnel (Normal)</span>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-900 font-bold">📱 Mobile App</span>
                     </div>
                     <div className="text-[10px] text-text-muted mt-0.5">
                       Ct. Sandeep Verma • Steady Service View (Zero Flags)
@@ -218,8 +222,9 @@ export function App() {
                     onClick={() => loginAsDemoUser("nco_demo")}
                     className="p-2.5 rounded bg-neutral-card hover:bg-neutral-hover border border-neutral-border text-left transition-colors group"
                   >
-                    <div className="font-bold text-navy-primary group-hover:text-navy-light">
-                      3. Section NCO / Havildar
+                    <div className="font-bold text-navy-primary group-hover:text-navy-light flex items-center justify-between">
+                      <span>3. Section NCO / Havildar</span>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-200 text-slate-800 font-bold">📲 Tactical Tablet</span>
                     </div>
                     <div className="text-[10px] text-text-muted mt-0.5">
                       Havildar Vikram Rathore • Rapid Muster & Leniency Filter

@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-  Shield,
   User,
   LogOut,
   Info,
@@ -33,44 +32,44 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const demoAccounts = [
     {
       username: "personnel_demo",
-      label: "1. Personnel (Shifted Pattern)",
-      sub: "Ct. Rajesh Kumar Singh • Soft Check-in Invitation",
+      label: "1. Frontline Personnel (Shifted Pattern)",
+      sub: "📱 Mobile App (Android/PWA) • Ct. Rajesh Kumar Singh",
       role: "personnel",
     },
     {
       username: "personnel_calm",
-      label: "2. Personnel (Normal Baseline)",
-      sub: "Ct. Sandeep Verma • Steady Service Record",
+      label: "2. Frontline Personnel (Normal Baseline)",
+      sub: "📱 Mobile App (Android/PWA) • Ct. Sandeep Verma",
       role: "personnel",
     },
     {
       username: "nco_demo",
       label: "3. Section NCO / Havildar",
-      sub: "Havildar Vikram Rathore • Rapid Muster & Leniency Normalization",
+      sub: "📱 Tactical Tablet View • Havildar Vikram Rathore",
       role: "nco",
     },
     {
       username: "doctor_demo",
       label: "4. Doctor / Medical Officer",
-      sub: "Dr. Maninderjit Singh • Monthly Medical Camp & Vitals Roster",
+      sub: "💻 Clinical Console • Dr. Maninderjit Singh",
       role: "doctor",
     },
     {
       username: "welfare_demo",
       label: "5. Welfare Officer (Sole Access)",
-      sub: "Asst. Cmdt. Dr. Ananya Sharma • Triage Queue & Tea Protocol",
+      sub: "💻 Welfare Desk • Asst. Cmdt. Dr. Ananya Sharma",
       role: "welfare_officer",
     },
     {
       username: "command_demo",
       label: "6. Command / Unit Leadership",
-      sub: "Cmdt. Arvind Joshi • Aggregate Strain Heatmap (Zero PII)",
+      sub: "💻 Command Radar • Cmdt. Arvind Joshi",
       role: "command",
     },
     {
       username: "admin_demo",
       label: "7. Security & Audit Admin",
-      sub: "Director M. Sundaram • Immutable Ledger & DPDP Plan",
+      sub: "💻 Admin Ledger • Director M. Sundaram",
       role: "admin",
     },
   ];
@@ -78,9 +77,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const getRoleBadge = (role: string) => {
     switch (role) {
       case "personnel":
-        return <span className="badge-khaki font-semibold">Personnel Service View</span>;
+        return <span className="badge-khaki font-semibold flex items-center gap-1"><span>📱</span> Frontline Mobile App</span>;
       case "nco":
-        return <span className="badge-navy font-semibold">Section Commander</span>;
+        return <span className="badge-navy font-semibold flex items-center gap-1"><span>📲</span> Tactical Tablet (Section)</span>;
       case "doctor":
         return <span className="badge-navy font-bold text-emerald-300 border border-emerald-500/50">Medical Officer (Doctor)</span>;
       case "welfare_officer":
@@ -194,9 +193,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3 border-b-2 border-gold">
         {/* Emblem & Identity */}
         <div className="flex items-center space-x-3.5">
-          <div className="w-10 h-10 rounded-[3px] bg-gold text-navy-primary flex items-center justify-center shrink-0 border border-gold-dark font-bold">
-            <Shield className="w-5 h-5 text-navy-primary" />
-          </div>
+          <img
+            src="/SETU_LOGO.png"
+            alt="SETU Guardian Minds Logo"
+            className="w-10 h-10 rounded-[4px] object-contain bg-white p-0.5 border border-gold-dark shrink-0 shadow-md"
+          />
           <div>
             <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
               <h1 className="text-lg sm:text-xl font-bold text-white tracking-wide">
